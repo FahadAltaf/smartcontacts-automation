@@ -55,9 +55,9 @@ namespace SmarterContract
                 {
                     data = new Data
                     {
-                        grades = new List<string> { "5f2da4889f9d3a002dd2fa17" },
-                        page = new Page { current = page, size = 250 },
-                        search = "",
+                        grade = new List<string> { "5f2da4889f9d3a002dd2fa17" },
+                        size = 250,
+                        from = (page==1)?0:(((page-1)*250)+1),
                         status = "active"
                     }
                 });
@@ -66,28 +66,28 @@ namespace SmarterContract
                 {
                     if (TotalPages == 1)
                     {
-                        TotalPages = response.Data.result.meta.page.total_pages;
+                        TotalPages =  (response.Data.result.hits.total.value + 250 - 1) / 250; 
                     }
-                    foreach (var entry in response.Data.result.results)
+                    foreach (var entry in response.Data.result.hits.hits)
                     {
-                        string id = entry.id.raw.Split(new string[] { "/" }, StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
-                        if (settings.WrongNumber.Any(y => Regex.IsMatch(entry.last_message.raw.ToLower(), $@"\b{y.ToLower()}\b")))
+                        string id = entry._source.id.Split(new string[] { "/" }, StringSplitOptions.RemoveEmptyEntries).LastOrDefault();
+                        if (settings.WrongNumber.Any(y => Regex.IsMatch(entry._source.last_message.ToLower(), $@"\b{y.ToLower()}\b")))
                         {
                             UpdateStatus(id, "Wrong Number", "5f2da4889f9d3a002dd2fa18", token);
                         }
-                        else if (settings.NotInterested.Any(y => Regex.IsMatch(entry.last_message.raw.ToLower(), $@"\b{y.ToLower()}\b")))
+                        else if (settings.NotInterested.Any(y => Regex.IsMatch(entry._source.last_message.ToLower(), $@"\b{y.ToLower()}\b")))
                         {
                             UpdateStatus(id, "Not Interested", "H6myBkly5Z9SKXu9DumL", token);
                         }
-                        else if (settings.Sold.Any(y => Regex.IsMatch(entry.last_message.raw.ToLower(), $@"\b{y.ToLower()}\b")))
+                        else if (settings.Sold.Any(y => Regex.IsMatch(entry._source.last_message.ToLower(), $@"\b{y.ToLower()}\b")))
                         {
                             UpdateStatus(id, "Sold", "5f2da4889f9d3a002dd2fa19", token);
                         }
-                        else if (settings.Talking.Any(y => Regex.IsMatch(entry.last_message.raw.ToLower(), $@"\b{y.ToLower()}\b")))
+                        else if (settings.Talking.Any(y => Regex.IsMatch(entry._source.last_message.ToLower(), $@"\b{y.ToLower()}\b")))
                         {
                             UpdateStatus(id, "Talking", "DzcR7BqcBR0Y6bdtsonn", token);
                         }
-                        else if (settings.HotLead.Any(y => Regex.IsMatch(entry.last_message.raw.ToLower(), $@"\b{y.ToLower()}\b")))
+                        else if (settings.HotLead.Any(y => Regex.IsMatch(entry._source.last_message.ToLower(), $@"\b{y.ToLower()}\b")))
                         {
                             UpdateStatus(id, "Hot Lead", "5f2da4889f9d3a002dd2fa1a", token);
                         }
@@ -101,7 +101,7 @@ namespace SmarterContract
 
         }
 
-        static void UpdateStatus(string id, string statusName, string status,string token)
+        static void UpdateStatus(string id, string statusName, string status, string token)
         {
             var client = new RestClient("https://us-central1-smartercontact-prod.cloudfunctions.net/contacts-updateOne");
             client.Timeout = -1;
@@ -130,10 +130,10 @@ namespace SmarterContract
 
     public class Data
     {
-        public string search { get; set; }
-        public Page page { get; set; }
+        public int size { get; set; }
+        public int from { get; set; }
         public string status { get; set; }
-        public List<string> grades { get; set; }
+        public List<string> grade { get; set; } = new List<string>();
     }
 
     public class Payload
@@ -143,116 +143,71 @@ namespace SmarterContract
 
     ///////////////
     // Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse); 
-    public class Page2
+    // Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse);
+    public class Bucket
     {
-        public int current { get; set; }
-        public int total_pages { get; set; }
-        public int total_results { get; set; }
-        public int size { get; set; }
+        public string key { get; set; }
+        public int doc_count { get; set; }
     }
 
-
-
-    public class Meta
+    public class Sources
     {
-        public Page2 page { get; set; }
-        public string request_id { get; set; }
+        public int doc_count_error_upper_bound { get; set; }
+        public int sum_other_doc_count { get; set; }
+        public List<Bucket> buckets { get; set; }
     }
 
-    public class Read
+    public class Labels
     {
-        public string raw { get; set; }
+        public int doc_count_error_upper_bound { get; set; }
+        public int sum_other_doc_count { get; set; }
+        public List<Bucket> buckets { get; set; }
     }
 
-    public class IsFavorite
+    public class Aggregations
     {
-        public string raw { get; set; }
+        public Sources sources { get; set; }
+        public Labels labels { get; set; }
     }
 
-    public class FullName
+    public class Total
     {
-        public string raw { get; set; }
+        public int value { get; set; }
     }
 
-    public class Phone
+    public class Source
     {
-        public string raw { get; set; }
+        public bool read { get; set; }
+        public bool is_favorite { get; set; }
+        public string full_name { get; set; }
+        public string phone { get; set; }
+        public string grade { get; set; }
+        public object last_message_at { get; set; }
+        public string last_message { get; set; }
+        public string id { get; set; }
+        public List<string> labels { get; set; }
+        public string status { get; set; }
+        public List<string> replied_campaigns { get; set; }
     }
 
-    public class Grade
+    public class Hit
     {
-        public string raw { get; set; }
-    }
-
-    public class LastMessageAt
-    {
-        public string raw { get; set; }
-    }
-
-    public class LastMessage
-    {
-        public string raw { get; set; }
-    }
-
-    public class Status
-    {
-        public string raw { get; set; }
-    }
-
-
-    public class Id
-    {
-        public string raw { get; set; }
-    }
-
-    public class Result2
-    {
-        public Read read { get; set; }
-        public IsFavorite is_favorite { get; set; }
-        public FullName full_name { get; set; }
-        public Phone phone { get; set; }
-        public Grade grade { get; set; }
-        public LastMessageAt last_message_at { get; set; }
-        public LastMessage last_message { get; set; }
-        public Status status { get; set; }
-        public Meta _meta { get; set; }
-        public Id id { get; set; }
-    }
-
-    public class Datum
-    {
-        public string value { get; set; }
-        public int count { get; set; }
-    }
-
-    public class RepliedCampaign
-    {
-        public string type { get; set; }
-        public List<Datum> data { get; set; }
-    }
-
-    public class Label
-    {
-        public string type { get; set; }
-        public List<Datum> data { get; set; }
-    }
-
-    public class Facets
-    {
-        public List<RepliedCampaign> replied_campaigns { get; set; }
-        public List<Label> labels { get; set; }
+        public Source _source { get; set; }
+        public Total total { get; set; }
+        public List<Hit> hits { get; set; }
     }
 
     public class Result
     {
-        public Meta meta { get; set; }
-        public List<Result2> results { get; set; }
+        public Aggregations aggregations { get; set; }
+        public Hit hits { get; set; }
     }
 
     public class Contracts
     {
         public Result result { get; set; }
     }
+
 
     //////
     // Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse); 
